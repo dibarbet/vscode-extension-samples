@@ -14,7 +14,12 @@ import {
 	CompletionItemKind,
 	TextDocumentPositionParams,
 	TextDocumentSyncKind,
-	InitializeResult
+	InitializeResult,
+	PrepareRenameParams,
+	PrepareSupportDefaultBehavior,
+	RenameParams,
+	WorkspaceEdit,
+	Range
 } from 'vscode-languageserver/node';
 
 import {
@@ -49,12 +54,17 @@ connection.onInitialize((params: InitializeParams) => {
 		capabilities.textDocument.publishDiagnostics.relatedInformation
 	);
 
+	console.log(JSON.stringify(params.capabilities));
+
 	const result: InitializeResult = {
 		capabilities: {
 			textDocumentSync: TextDocumentSyncKind.Incremental,
 			// Tell the client that this server supports code completion.
 			completionProvider: {
 				resolveProvider: true
+			},
+			renameProvider: {
+				prepareProvider: true
 			}
 		}
 	};
@@ -221,6 +231,29 @@ connection.onCompletionResolve(
 		return item;
 	}
 );
+
+connection.onPrepareRename(
+	(params: PrepareRenameParams): { defaultBehavior: boolean } | Range => {
+		console.log("Prepare rename request received");
+		return { defaultBehavior: true };
+		// Returning a range here instead works.
+	}
+);
+
+connection.onRenameRequest(
+	(request: RenameParams): WorkspaceEdit => {
+		console.log("Rename request received");
+		return {
+			changes: {
+				[request.textDocument.uri]: [
+					{
+						range: { start: request.position, end: request.position },
+						newText: request.newName
+					}
+				]
+			}
+		};
+	});
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
