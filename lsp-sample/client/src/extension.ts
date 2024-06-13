@@ -4,12 +4,13 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
-import { workspace, ExtensionContext } from 'vscode';
+import { workspace, ExtensionContext, window, Position, commands } from 'vscode';
 
 import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
+	Trace,
 	TransportKind
 } from 'vscode-languageclient/node';
 
@@ -31,6 +32,8 @@ export function activate(context: ExtensionContext) {
 		}
 	};
 
+	const channel = window.createOutputChannel('TESTING');
+
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
 		// Register the server for plain text documents
@@ -38,7 +41,9 @@ export function activate(context: ExtensionContext) {
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
 			fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
-		}
+		},
+		outputChannel: channel,
+		traceOutputChannel: channel,
 	};
 
 	// Create the language client and start the client.
@@ -48,6 +53,29 @@ export function activate(context: ExtensionContext) {
 		serverOptions,
 		clientOptions
 	);
+
+	client.setTrace(Trace.Verbose);
+
+	workspace.onDidChangeTextDocument(async e => {
+		if (e.document.languageId === 'plaintext' && e.contentChanges.length > 0)
+		{
+			channel.appendLine("Client workspace.onDidChangeTextDocument triggered: " + e.contentChanges[0].text);
+			await client.sendRequest('custom/request', { content: e.contentChanges[0].text, caller: 'workspace.onDidChangeTextDocument' });
+		}
+		
+	});
+
+	client.getFeature('textDocument/didChange').onNotificationSent(async e => {
+		channel.appendLine("Client didChange onNotificationSent triggered: " + e.params.contentChanges[0].text);
+		await client.sendRequest('custom/request', { content: e.params.contentChanges[0].text, caller: 'onNotificationSent' });
+	});
+
+	commands.registerCommand('extension.sayHello', () => {
+		window.activeTextEditor!.edit(editBuilder => {
+			editBuilder.insert(new Position(0, 0), "Hello World!");
+		});
+	});
+	
 
 	// Start the client. This will also launch the server
 	client.start();
@@ -59,3 +87,10 @@ export function deactivate(): Thenable<void> | undefined {
 	}
 	return client.stop();
 }
+
+// Result ordering:
+// Client workspace.onDidChangeTextDocument triggered: 1
+// Client didChange onNotificationSent triggered: 1
+// Server custom request for workspace.onDidChangeTextDocument triggered: 1
+// Server didChange triggered: 1
+// Server custom request for onNotificationSent triggered: 1
