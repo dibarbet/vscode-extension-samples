@@ -38,10 +38,12 @@ export class Emojizer implements vscode.CodeActionProvider {
 		vscode.CodeActionKind.QuickFix
 	];
 
-	public provideCodeActions(document: vscode.TextDocument, range: vscode.Range): vscode.CodeAction[] | undefined {
+	public async provideCodeActions(document: vscode.TextDocument, range: vscode.Range): Promise<vscode.CodeAction[] | undefined> {
 		if (!this.isAtStartOfSmiley(document, range)) {
 			return;
 		}
+
+		await new Promise((r) => setTimeout(r, 2000));
 
 		const replaceWithSmileyCatFix = this.createFix(document, range, '😺');
 

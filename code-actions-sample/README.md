@@ -1,4 +1,4 @@
-# Code Action Provider Sample
+# Code Action Provider Sample :)
 
 This sample shows how to provide code actions in the editor. Code actions are used to implement quick fixes and [refactoring](https://code.visualstudio.com/docs/editor/refactoring) in VS Code.
 
